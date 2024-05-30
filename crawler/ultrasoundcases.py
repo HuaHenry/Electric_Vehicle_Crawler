@@ -8,37 +8,31 @@ from selenium.webdriver.chrome.options import Options
 import time
 import random
 
-# 设置Chrome选项以避免被检测为爬虫
-chrome_options = Options()
-chrome_options.add_argument("--headless")  # 无头模式
-chrome_options.add_argument("--disable-gpu")
-chrome_options.add_argument("start-maximized")
-chrome_options.add_argument("disable-infobars")
-chrome_options.add_argument("--disable-extensions")
-chrome_options.add_argument("--incognito")
-
+from selenium.webdriver.common.keys import Keys
+from msedge.selenium_tools import Edge, EdgeOptions
 # 设置User-Agent
 user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3"
-chrome_options.add_argument(f'user-agent={user_agent}')
+options = EdgeOptions()
+options.use_chromium = True
+# options.add_argument("headless")  # 静默模式
+options.add_argument("disable-gpu")
 
 
+options.binary_location = r"C:/Program Files (x86)/Microsoft/EdgeCore/125.0.2535.67/msedge.exe"
+
+driver = Edge(options=options, executable_path=r"E:/personal_project/Electric_Vehicle_Crawler/edgedriver_win64/msedgedriver.exe")
 
 def get_url(url):
-    driver = webdriver.Chrome(options=chrome_options)
     driver.get(url)  # 加载网页
     # 随机延时，防止被反爬虫机制检测
     time.sleep(random.uniform(3, 7))
     # 等待加载完毕
-    driver.implicitly_wait(10)
+    driver.implicitly_wait(5)
     # 获取网页信息
     source = driver.page_source
-    driver.quit()
+    # driver.quit()
     return source
-    
-# https://www.ultrasoundcases.info/cases
-html_url = "https://www.ultrasoundcases.info/cases"
-html = get_url(html_url)
-soup = BeautifulSoup(html, "html.parser")
+
 
 from pprint import pprint
 
@@ -64,14 +58,14 @@ def get_subtype_page_url(
         subtype_page[web_url + subtype.get("href")] = subtype.get_text()
     return subtype_page
 
-def get_subtype_page_url(
+def get_case_page_url(
         soup,
         web_url="https://www.ultrasoundcases.info"
 ):
-    subtype_page = {}
-    for subtype in soup.find_all("div", {"data-type": "subsubcat"}):
-        subtype_page[web_url + subtype.get("href")] = subtype.get_text()
-    return subtype_page
+    case_page = {}
+    for case in soup.find_all("div", {"class": "candidate half-grid"}):
+        case_page[web_url + case.find("a", {"class": "blank"}).get("href")] = case.find("span").get_text()
+    return case_page
 
 def get_case_url(
         soup,
@@ -94,18 +88,35 @@ def get_case_url(
 
 import json
 from tqdm import tqdm
-med_data = {} # {body_part: {sub_part: {subtype: {case_url: case_name}}}}
-json.dump(med_data, open("med_data.json", "w", encoding="utf-8"))
-body_part_url = get_body_part_url(soup)
+
+json_path = "med_data.json"
+# med_data = {} # {body_part: {sub_part: {subtype: {case_url: case_name}}}}
+med_data = json.load(open(json_path, "r", encoding="utf-8"))
+json.dump(med_data, open(json_path, "w", encoding="utf-8"))
+body_part_url = get_body_part_url(BeautifulSoup(get_url("https://www.ultrasoundcases.info/cases")))
 for body_part, sub_part in tqdm(body_part_url.items()):
-    med_data[body_part] = {}
+    if body_part not in med_data:
+        med_data[body_part] = {}
     print(body_part)
     for sub in tqdm(sub_part):
-        print(f'Loading {sub}')
+        # if 'breast' not in sub.lower(): continue
+        print(f'Loading subpart {sub}')
         subtype_page = get_subtype_page_url(BeautifulSoup(get_url(sub)))
-        med_data[body_part][sub] = {}
+        if sub not in med_data[body_part]:
+            med_data[body_part][sub] = {}
+        json.dump(med_data, open(json_path, "w", encoding="utf-8"))
         for subtype, subtype_name in tqdm(subtype_page.items()):
-            # med_data[body_part][sub][subtype_name] = get_case_url(BeautifulSoup(get_url(subtype)))
-            caption, case_url = get_case_url(BeautifulSoup(get_url(subtype)))
-            med_data[body_part][sub][subtype_name] = {"caption": caption, "case_url": case_url}
-            json.dump(med_data, open("med_data.json", "w", encoding="utf-8"))
+            print(f'Loading subtype {subtype}')
+            case_page = get_case_page_url(BeautifulSoup(get_url(subtype)))
+            if subtype not in med_data[body_part][sub]:
+                med_data[body_part][sub][subtype] = {}
+            json.dump(med_data, open(json_path, "w", encoding="utf-8"))
+            for case, case_name in tqdm(case_page.items()):
+                print(f'Loading case {case}')
+                if case in med_data[body_part][sub][subtype]: continue
+                caption, case_url = get_case_url(BeautifulSoup(get_url(case)))
+                med_data[body_part][sub][subtype][case] = {"case_name": case_name, "caption": caption, "case_url": case_url}
+                json.dump(med_data, open(json_path, "w", encoding="utf-8"))
+                time.sleep(random.uniform(3, 7))
+                print(f'Loaded case {case}')
+            print(f'Loaded subtype {subtype}')

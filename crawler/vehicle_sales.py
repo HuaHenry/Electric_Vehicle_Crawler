@@ -25,27 +25,48 @@ def get_url(url):
     source = driver.page_source  # 获取网页信息
     return source
 
+def get_info(source, debug_url=""):
+    soup = BeautifulSoup(source, "lxml")
 
-def get_info(source):
-    soup = BeautifulSoup(source, "lxml")  # 对渲染后的网页代码使用BS4进行解析
-    car_info = soup.select('table > tbody > tr > td')  # 对车辆基本信息定位，获取网页代码
-    car_info_ = [i.get_text() for i in car_info]  # 对代码进行解析，获得内容
-    # print(car_info_)
+    # 提取车辆基本信息
+    car_info = soup.select('table > tbody > tr > td')
+    car_info_ = [i.get_text(strip=True) for i in car_info]
+
     car_info__ = []
     for i in range(0, len(car_info_), 6):
         car_info_i = car_info_[i:i + 5]
+        if len(car_info_i) < 5:
+            continue
         price = car_info_i[-1]
-        min_price = price[:price.find(" - ")]
-        max_price = price[price.find(" - ") + 3:]
+        if " - " in price:
+            min_price = price.split(" - ")[0]
+            max_price = price.split(" - ")[1]
+        else:
+            min_price = max_price = price
         car_info_i[-1] = min_price
         car_info_i.append(max_price)
         car_info__.append(car_info_i)
-    # car_info_ = [car_info_[i:i + 5] for i in range(0, len(car_info_), 6)]
+
+    # 提取跳转链接（参数页链接）
     option_link = soup.select('table > tbody > tr > td > div > a')
-    option_link = [i.get('href') for i in option_link]
+    option_link = [i.get('href') for i in option_link if i.get('href') is not None]
     option_link = [option_link[i] for i in range(2, len(option_link), 6)]
+
+    # 对齐长度，避免拼接错误
+    min_len = min(len(car_info__), len(option_link))
+    if min_len == 0:
+        print(f"[警告] 页面无有效数据: {debug_url}")
+        return np.array([])
+
+    if len(car_info__) != len(option_link):
+        print(f"[提示] 数据长度不一致（已对齐）: {debug_url}")
+        print(f"车辆信息数量: {len(car_info__)}, 参数链接数量: {len(option_link)}")
+
+    car_info__ = car_info__[:min_len]
+    option_link = option_link[:min_len]
+
     all_info = np.c_[np.array(car_info__), np.array(option_link)]
-    return all_info  # 最终返回爬取的内容
+    return all_info
 
 
 def links(month):
@@ -53,7 +74,7 @@ def links(month):
     # https://xl.16888.com/ev-202212-202212-1.html
     links = []
     month_ = [i + j
-              for i in ['2014', '2015', '2016', '2017', '2018', '2019', '2020', '2021', '2022']
+              for i in ['2021', '2022','2023','2024']
               for j in ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12']
               if i + j <= month]
     for i in month_:
@@ -70,32 +91,9 @@ def links(month):
     return links
 
 
-def get_ev_data(driver_path="/slurm_data/youcheng.li/EVCrawler/phantomjs-2.1.1-linux-x86_64/bin/phantomjs",
-                month="202212"):
-    driver = webdriver.PhantomJS(
-        executable_path=driver_path
-    )  # 加载无头浏览器，具体查看selenium文档，可换成火狐或者谷歌浏览器
-    # month = '202212'
-    url = links(month)
-    all_info_ = pd.DataFrame()
-    for i in tqdm(url):
-        print(i)
-        source = get_url(i)
-        all_info = get_info(source)
-        date_month = i[24:30]
-        date = np.array([date_month for i in range(len(all_info))])
-        all_info = np.c_[all_info, date]
-        all_info = pd.DataFrame(all_info)
-        all_info_ = pd.concat([all_info_, all_info])
-    print(all_info_)
-    # all_info.columns = ["序号","车型","销量","厂商","最低售价","最高售价","参数","日期"] # csv文件没有表头，这里只是参考一下
-    all_info_.to_csv("1401_2212新能源汽车总体销量数据.csv")
-    print("Finished")
-
-
 if __name__ == '__main__':
     driver = webdriver.PhantomJS(
-        executable_path="/slurm_data/youcheng.li/EVCrawler/phantomjs-2.1.1-linux-x86_64/bin/phantomjs"
+        executable_path="../phantomjs-2.1.1-macosx/bin/phantomjs"
     )  # 加载无头浏览器，具体查看selenium文档，可换成火狐或者谷歌浏览器
     month = '202212'
     url = links(month)
@@ -103,7 +101,9 @@ if __name__ == '__main__':
     for i in tqdm(url):
         print(i)
         source = get_url(i)
-        all_info = get_info(source)
+        all_info = get_info(source, debug_url=i)
+        if all_info.size == 0:
+            continue  # 没有有效数据，跳过
         date_month = i[24:30]
         date = np.array([date_month for i in range(len(all_info))])
         all_info = np.c_[all_info, date]
@@ -111,5 +111,5 @@ if __name__ == '__main__':
         all_info_ = pd.concat([all_info_, all_info])
     print(all_info_)
     # all_info.columns = ["序号","车型","销量","厂商","最低售价","最高售价","参数","日期"] # csv文件没有表头，这里只是参考一下
-    all_info_.to_csv("1401_2212新能源汽车总体销量数据.csv")
+    all_info_.to_csv("2101_2412新能源汽车总体销量数据.csv")
     print("Finished")

@@ -1,0 +1,450 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container py-5">
+  <div class="glass-morphism-card p-5 text-center" style="max-width: 500px; margin: auto;">
+    <div class="mb-4">
+      <h2 class="text-gradient-primary mb-3" style="font-weight: bolder">探索你的理想座驾</h2>
+      <p class="text-muted">滑动浏览并选择你喜欢的车型</p>
+    </div>
+
+    <div id="progressContainer" class="mb-4">
+      <div class="d-flex justify-content-between mb-2">
+        <small class="text-muted">选择进度</small>
+        <small id="progressText" class="font-weight-bold">0/5</small>
+      </div>
+      <div class="progress" style="height: 8px; border-radius: 4px; background-color: rgba(255,255,255,0.3);">
+        <div id="progressBar" class="progress-bar" role="progressbar" 
+             style="width: 0%; background: linear-gradient(90deg, #4facfe 0%, #00f2fe 100%); transition: width 0.6s ease;">
+        </div>
+      </div>
+    </div>
+
+    <div id="carCard" class="card car-card">
+      <div class="card-image-container">
+        <img id="carImage" src="" class="card-img-top" alt="车型图片">
+        <div class="image-overlay"></div>
+        <div class="car-badge">NEW</div>
+      </div>
+      <div class="card-body px-4 py-4">
+        <div class="d-flex justify-content-between align-items-start mb-3">
+          <div class="text-left">
+            <h5 id="carBrand" class="card-title mb-0 text-uppercase font-weight-bold" style="letter-spacing: 1px; color: #4facfe;"></h5>
+            <p id="carName" class="card-text mb-0" style="font-size: 1.4rem; font-weight: 600;"></p>
+          </div>
+          <div class="price-tag">
+            <span id="carPrice" class="price-text"></span>
+          </div>
+        </div>
+        
+        <!-- <div class="car-features mb-4">
+          <span class="feature-badge">🚗 豪华内饰</span>
+          <span class="feature-badge">⚡ 强劲动力</span>
+          <span class="feature-badge">🔋 高效节能</span>
+        </div> -->
+        
+        <div class="d-flex justify-content-center mt-3">
+          <button class="btn btn-skip mx-2" onclick="skipCar()">
+            <i class="fas fa-times mr-1"></i> 跳过
+          </button>
+          <button class="btn btn-like mx-2" onclick="likeCar()">
+            <i class="fas fa-heart mr-1"></i> 喜欢
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="swipe-hint mt-4">
+      <small class="text-muted"><i class="fas fa-arrows-alt-h mr-2"></i>左右滑动切换车型</small>
+    </div>
+
+    <form method="POST" id="finalForm">
+      <input type="hidden" name="selected_cars" id="selectedCarsInput">
+    </form>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8/hammer.min.js"></script>
+<script>
+  const cars = [
+    {% for car in cars %}
+      {
+        id: "{{ car.id }}",
+        name: "{{ car.name }}",
+        brand: "{{ car.brand }}",
+        min_price: "{{ car.min_price if car.min_price else '' }}",
+        max_price: "{{ car.max_price if car.max_price else '' }}",
+        image: "{{ car.image_url or 'https://images.unsplash.com/photo-1494976388531-d1058494cdd8?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80' }}"
+      },
+    {% endfor %}
+  ];
+
+  let index = 0;
+  let selectedCars = [];
+  let isAnimating = false;
+
+  function updateProgressBar() {
+    const percent = (selectedCars.length / 5) * 100;
+    const progressBar = document.getElementById('progressBar');
+    const progressText = document.getElementById('progressText');
+    
+    progressBar.style.width = percent + "%";
+    progressText.innerText = `${selectedCars.length}/5`;
+    
+    // Add pulse animation when progress increases
+    if (percent > 0) {
+      progressBar.classList.add('progress-pulse');
+      setTimeout(() => {
+        progressBar.classList.remove('progress-pulse');
+      }, 500);
+    }
+  }
+
+  function formatPrice(min, max) {
+    if (min && max) {
+      return `${min}万 ~ ${max}万`;
+    } else if (min) {
+      return `起价 ${min}万`;
+    } else {
+      return '价格待定';
+    }
+  }
+
+  function updateCard() {
+    if (index >= cars.length) {
+      // Show elegant completion message
+      Swal.fire({
+        title: '浏览完成',
+        text: '您已浏览所有车型，即将提交您的选择',
+        icon: 'info',
+        confirmButtonText: '确定',
+        willClose: () => {
+          document.getElementById('selectedCarsInput').value = selectedCars.join(',');
+          document.getElementById('finalForm').submit();
+        }
+      });
+      return;
+    }
+    
+    const car = cars[index];
+    const carImage = document.getElementById('carImage');
+    
+    // Preload image for smoother transition
+    const img = new Image();
+    img.src = car.image;
+    img.onload = function() {
+      carImage.src = car.image;
+      carImage.style.opacity = 1;
+    };
+    
+    document.getElementById('carBrand').innerText = car.brand || '豪华品牌';
+    document.getElementById('carName').innerText = car.name || '旗舰车型';
+    document.getElementById('carPrice').innerText = formatPrice(car.min_price, car.max_price);
+  }
+
+  function animateCard(direction, callback) {
+    if (isAnimating) return;
+    isAnimating = true;
+    
+    const card = document.getElementById('carCard');
+    const carImage = document.getElementById('carImage');
+    
+    // Fade out image first
+    carImage.style.opacity = 0;
+    
+    // Set animation class based on direction
+    card.classList.remove('animate-left', 'animate-right');
+    card.classList.add('animate-' + direction);
+    
+    setTimeout(() => {
+      callback();
+      card.classList.remove('animate-' + direction);
+      card.classList.add('animate-return');
+      
+      setTimeout(() => {
+        card.classList.remove('animate-return');
+        isAnimating = false;
+      }, 300);
+    }, 300);
+  }
+
+  function likeCar() {
+    if (selectedCars.length >= 5) return;
+    
+    selectedCars.push(cars[index].name);
+    updateProgressBar();
+    
+    // Show heart animation
+    const heart = document.createElement('div');
+    heart.className = 'heart-animation';
+    heart.innerHTML = '<i class="fas fa-heart"></i>';
+    document.getElementById('carCard').appendChild(heart);
+    
+    setTimeout(() => {
+      heart.remove();
+    }, 1000);
+    
+    nextCar();
+    
+    if (selectedCars.length >= 5) {
+      // Show completion animation before submit
+      setTimeout(() => {
+        document.getElementById('selectedCarsInput').value = selectedCars.join(',');
+        document.getElementById('finalForm').submit();
+      }, 800);
+    }
+  }
+
+  function skipCar() {
+    nextCar();
+  }
+
+  function nextCar() {
+    animateCard('left', () => {
+      index++;
+      updateCard();
+    });
+  }
+
+  function prevCar() {
+    if (index <= 0) return;
+    animateCard('right', () => {
+      index--;
+      updateCard();
+    });
+  }
+
+  // Initialize Hammer.js for swipe gestures
+  function initSwipe() {
+    const carCard = document.getElementById('carCard');
+    const mc = new Hammer(carCard);
+    
+    mc.on("swipeleft", function() {
+      nextCar();
+    });
+    
+    mc.on("swiperight", function() {
+      prevCar();
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    updateCard();
+    updateProgressBar();
+    initSwipe();
+    
+    // Add subtle floating animation to card
+    const card = document.getElementById('carCard');
+    card.style.animation = 'float 6s ease-in-out infinite';
+  });
+</script>
+
+<style>
+  /* Base Styles */
+  .glass-morphism-card {
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-radius: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);
+    overflow: hidden;
+  }
+  
+  .text-gradient-primary {
+    background: linear-gradient(90deg, #4facfe 0%, #00f2fe 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    display: inline-block;
+  }
+  
+  /* Card Styles */
+  .car-card {
+    border: none;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+    background: rgba(255, 255, 255, 0.95);
+    transform-style: preserve-3d;
+    transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  }
+  
+  .card-image-container {
+    position: relative;
+    height: 250px;
+    overflow: hidden;
+  }
+  
+  .car-card img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: opacity 0.5s ease, transform 0.5s ease;
+  }
+  
+  .image-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(to bottom, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0.7) 100%);
+  }
+  
+  .car-badge {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    background: linear-gradient(135deg, #ff9a9e 0%, #fad0c4 100%);
+    color: white;
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: bold;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+  }
+  
+  .price-tag {
+    background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+    padding: 8px 12px;
+    border-radius: 20px;
+    color: white;
+    font-weight: bold;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+  }
+  
+  .price-text {
+    font-size: 14px;
+    white-space: nowrap;
+  }
+  
+  .car-features {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  
+  .feature-badge {
+    background: rgba(79, 172, 254, 0.1);
+    color: #4facfe;
+    padding: 5px 10px;
+    border-radius: 15px;
+    font-size: 12px;
+    font-weight: 500;
+  }
+  
+  /* Button Styles */
+  .btn-like {
+    background: linear-gradient(135deg, #ff9a9e 0%, #fad0c4 100%);
+    border: none;
+    color: white;
+    padding: 10px 25px;
+    border-radius: 30px;
+    font-weight: 600;
+    box-shadow: 0 4px 15px rgba(255, 154, 158, 0.4);
+    transition: all 0.3s ease;
+  }
+  
+  .btn-like:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(255, 154, 158, 0.6);
+  }
+  
+  .btn-skip {
+    background: rgba(0, 0, 0, 0.05);
+    border: none;
+    color: #666;
+    padding: 10px 25px;
+    border-radius: 30px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+  }
+  
+  .btn-skip:hover {
+    background: rgba(0, 0, 0, 0.1);
+    transform: translateY(-2px);
+  }
+  
+  /* Animations */
+  @keyframes float {
+    0% { transform: translateY(0px); }
+    50% { transform: translateY(-10px); }
+    100% { transform: translateY(0px); }
+  }
+  
+  .animate-left {
+    animation: slideLeft 0.5s forwards;
+  }
+  
+  .animate-right {
+    animation: slideRight 0.5s forwards;
+  }
+  
+  .animate-return {
+    animation: returnToCenter 0.3s forwards;
+  }
+  
+  @keyframes slideLeft {
+    0% { transform: translateX(0) scale(1); opacity: 1; }
+    50% { transform: translateX(-100%) scale(0.8); opacity: 0; }
+    51% { transform: translateX(100%) scale(0.8); opacity: 0; }
+    100% { transform: translateX(0) scale(1); opacity: 1; }
+  }
+  
+  @keyframes slideRight {
+    0% { transform: translateX(0) scale(1); opacity: 1; }
+    50% { transform: translateX(100%) scale(0.8); opacity: 0; }
+    51% { transform: translateX(-100%) scale(0.8); opacity: 0; }
+    100% { transform: translateX(0) scale(1); opacity: 1; }
+  }
+  
+  @keyframes returnToCenter {
+    from { transform: scale(0.95); opacity: 0.8; }
+    to { transform: scale(1); opacity: 1; }
+  }
+  
+  .progress-pulse {
+    animation: pulse 0.5s ease;
+  }
+  
+  @keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+  }
+  
+  .heart-animation {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 80px;
+    color: #ff9a9e;
+    opacity: 0;
+    animation: heartBeat 1s ease;
+    z-index: 10;
+  }
+  
+  @keyframes heartBeat {
+    0% { transform: translate(-50%, -50%) scale(0.3); opacity: 0; }
+    50% { transform: translate(-50%, -50%) scale(1.2); opacity: 0.8; }
+    100% { transform: translate(-50%, -50%) scale(1); opacity: 0; }
+  }
+  
+  /* Responsive Adjustments */
+  @media (max-width: 576px) {
+    .glass-morphism-card {
+      padding: 20px;
+    }
+    
+    .card-image-container {
+      height: 200px;
+    }
+    
+    .btn-like, .btn-skip {
+      padding: 8px 20px;
+    }
+  }
+</style>
+{% endblock %}

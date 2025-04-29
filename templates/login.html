@@ -1,0 +1,28 @@
+<!-- templates/login.html -->
+{% extends "base.html" %}
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-6 col-lg-5">
+    <div class="glass-card mt-5">
+      <h2 class="text-center mb-4">登录系统</h2>
+      <form method="POST">
+        {{ form.hidden_tag() }}
+        <div class="mb-3">
+          {{ form.email.label(class="form-label") }}
+          {{ form.email(class="form-control") }}
+        </div>
+        <div class="mb-3">
+          {{ form.password.label(class="form-label") }}
+          {{ form.password(class="form-control") }}
+        </div>
+        <div class="d-grid">
+          {{ form.submit(class="btn btn-primary btn-block") }}
+        </div>
+      </form>
+      <p class="mt-3 text-center">
+        还没有账号？<a href="{{ url_for('register') }}" class="text-primary">注册</a>
+      </p>
+    </div>
+  </div>
+</div>
+{% endblock %}

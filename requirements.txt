@@ -8,3 +8,8 @@ scikit_learn==1.6.1
 scipy==1.15.2
 selenium==3.3.0
 tqdm==4.67.1
+Flask-SQLAlchemy
+Flask-Login
+Flask-WTF
+email-validator
+Werkzeug

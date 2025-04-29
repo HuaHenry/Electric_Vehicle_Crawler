@@ -1,0 +1,140 @@
+<!-- templates/home.html -->
+{% extends "base.html" %}
+{% block content %}
+<div class="text-center mt-5 p-5" style="max-width: 950px; margin: 0 auto;">
+  <!-- 主卡片容器 - 移除glass-card使用更强渐变 -->
+  <div class="rounded-4 p-5" style="background: linear-gradient(135deg, rgba(195,236,248,0.9) 0%, rgba(224,195,252,0.9) 100%); 
+              backdrop-filter: blur(8px);
+              box-shadow: 0 12px 30px rgba(31, 38, 135, 0.3);
+              border: 1px solid rgba(255,255,255,0.3);">
+    
+    <!-- 标题部分 -->
+    <h1 class="display-4 fw-bold mb-4 animate__animated animate__fadeInDown">
+      欢迎来到<span class="text-gradient">新能源汽车</span>推荐系统
+    </h1>
+    
+    <!-- 打字机效果 -->
+    <div class="typing-wrapper my-4" style="height: 60px; display: flex; align-items: center; justify-content: center;">
+      <span class="h4 text-dark fw-medium" id="typing-text" style="line-height: 1.5;"></span>
+    </div>
+    
+    <!-- 主要按钮 -->
+    <div class="animate__animated animate__fadeInUp animate__delay-2s">
+      <a href="/recommend" class="btn btn-primary btn-lg px-5 py-3 rounded-pill fw-medium">
+        立即探索 <i class="ms-2 fas fa-arrow-right"></i>
+      </a>
+    </div>
+  </div>
+</div>
+
+<style>
+  /* 强烈背景渐变 - 应用到整个页面 */
+  body {
+    background: linear-gradient(135deg, #a1c4fd 0%, #c2e9fb 50%, #d4b6fc 100%) !important;
+    background-attachment: fixed;
+  }
+  
+  /* 更强烈的文字渐变效果 */
+  .text-gradient {
+    background: linear-gradient(135deg, #2563eb 0%, #7c3aed 50%, #9333ea 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    display: inline-block;
+    position: relative;
+    padding: 0 5px;
+  }
+  .text-gradient::after {
+    content: '';
+    position: absolute;
+    left: 5px;
+    bottom: -5px;
+    width: calc(100% - 10px);
+    height: 3px;
+    background: linear-gradient(90deg, #2563eb, #9333ea);
+    transform: scaleX(0);
+    transition: transform 0.4s ease;
+    border-radius: 3px;
+  }
+  h1:hover .text-gradient::after {
+    transform: scaleX(1);
+  }
+  
+  /* 打字机光标样式 */
+  .typed-cursor {
+    color: #9333ea;
+    font-weight: bold;
+    opacity: 1 !important;
+    animation: blink 0.7s infinite;
+    vertical-align: middle;
+    margin-left: 2px;
+  }
+  @keyframes blink {
+    0% { opacity: 1; }
+    50% { opacity: 0; }
+    100% { opacity: 1; }
+  }
+  
+  /* 3D按钮效果 */
+  .btn-primary {
+    background: linear-gradient(135deg, #4f46e5 0%, #9333ea 100%);
+    border: none;
+    transition: all 0.4s cubic-bezier(0.68, -0.55, 0.27, 1.55);
+    box-shadow: 0 4px 15px rgba(79, 70, 229, 0.4);
+    position: relative;
+    overflow: hidden;
+  }
+  .btn-primary:hover {
+    transform: translateY(-3px) scale(1.02);
+    box-shadow: 0 8px 25px rgba(79, 70, 229, 0.6);
+  }
+  .btn-primary::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+    transition: 0.5s;
+  }
+  .btn-primary:hover::before {
+    left: 100%;
+  }
+</style>
+
+<!-- CDN链接 -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/typed.js/2.0.12/typed.min.js"></script>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    // 打字机效果
+    new Typed('#typing-text', {
+      strings: [
+        '探索未来出行的无限可能',
+        '发现最适合您的新能源汽车',
+        '环保出行，智能选择'
+      ],
+      typeSpeed: 50,
+      backSpeed: 30,
+      startDelay: 500,
+      loop: true,
+      showCursor: true,
+      cursorChar: '<span class="typed-cursor">|</span>',
+      contentType: 'html'
+    });
+    
+    // 标题悬停动画
+    const heading = document.querySelector('h1');
+    heading.style.transition = 'transform 0.3s ease';
+    heading.addEventListener('mouseenter', () => {
+      heading.style.transform = 'scale(1.03)';
+    });
+    heading.addEventListener('mouseleave', () => {
+      heading.style.transform = 'scale(1)';
+    });
+  });
+</script>
+{% endblock %}

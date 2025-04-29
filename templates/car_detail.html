@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="zh-cn">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ car.brand }} {{ car.name }} - 汽车详情</title>
+
+  <!-- Bootstrap5 -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+    :root {
+      --gradient-start: #3a7bd5;
+      --gradient-end: #00d2ff;
+    }
+
+    body {
+      background-color: #f8f9fa;
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    }
+
+    .navbar {
+      background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    }
+
+    /* 直接模糊整个汽车图片 */
+    .banner-img {
+      width: 100%;
+      height: 400px;
+      object-fit: cover;
+      filter: blur(8px);
+    }
+
+    .banner-text {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      color: white;
+      text-shadow: 0 2px 8px rgba(0,0,0,0.8);
+      text-align: center;
+    }
+
+    .info-card {
+      background: white;
+      border-radius: 20px;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.08);
+      padding: 2rem;
+    }
+
+    .btn-gradient {
+      background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+      color: #fff;
+      border: none;
+      transition: all 0.3s ease;
+    }
+
+    .btn-gradient:hover {
+      background: linear-gradient(135deg, var(--gradient-end), var(--gradient-start));
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(58,123,213,0.3);
+    }
+
+    .btn-liked {
+      background: #ff5c5c;
+      border: none;
+      color: white;
+      pointer-events: none;
+    }
+
+    footer {
+      background: #212529;
+      color: #adb5bd;
+      padding: 2rem 0;
+      font-size: 0.9rem;
+    }
+
+    footer a {
+      color: #adb5bd;
+    }
+
+    footer a:hover {
+      color: #fff;
+    }
+  </style>
+</head>
+
+<body>
+
+<!-- 导航栏 -->
+<nav class="navbar navbar-expand-lg navbar-dark sticky-top">
+  <div class="container-fluid px-4">
+    <a class="navbar-brand fw-bold" href="#">新能源汽车推荐系统</a>
+  </div>
+</nav>
+
+<!-- 汽车Banner -->
+<div class="position-relative">
+  <img src="{{ car.image_url or 'https://via.placeholder.com/1200x400?text=Car+Image' }}" 
+       alt="{{ car.brand }} {{ car.name }}" 
+       class="banner-img">
+  <div class="banner-text">
+    <h1 class="display-4 fw-bold">{{ car.brand }} {{ car.name }}</h1>
+  </div>
+</div>
+
+<!-- 内容 -->
+<div class="container py-5">
+  <div class="row g-5">
+    <div class="col-lg-6">
+      <div class="info-card">
+        <h4 class="fw-bold mb-4 text-primary">车型信息</h4>
+        <ul class="list-group list-group-flush mb-4">
+          <li class="list-group-item"><strong>品牌：</strong> {{ car.brand }}</li>
+          <li class="list-group-item"><strong>车型：</strong> {{ car.name }}</li>
+          <li class="list-group-item"><strong>最低售价：</strong> {{ car.min_price }} 万</li>
+          <li class="list-group-item"><strong>最高售价：</strong> {{ car.max_price }} 万</li>
+          <li class="list-group-item"><strong>厂商：</strong> {{ car.type or '新能源厂家' }}</li>
+        </ul>
+
+        <!-- 喜欢按钮 -->
+        {% if car.name in (current_user.preferred_cars.split(',') if current_user.preferred_cars else []) %}
+        <button class="btn btn-liked w-100 rounded-pill py-2 mt-3" disabled>
+          <i class="bi bi-heart-fill me-2"></i>已喜欢
+        </button>
+        {% else %}
+        <button id="likeButton" class="btn btn-gradient w-100 rounded-pill py-2 mt-3" data-car-name="{{ car.name }}">
+          <i class="bi bi-heart me-2"></i>喜欢这辆车
+        </button>
+        {% endif %}
+
+      </div>
+    </div>
+
+    <div class="col-lg-6">
+      <div class="info-card">
+        <h4 class="fw-bold mb-4 text-primary">销量趋势</h4>
+        <canvas id="salesChart" style="height: 300px;"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <div class="info-card mt-5">
+    <h4 class="fw-bold mb-4 text-primary">历史销量记录</h4>
+    <div class="table-responsive">
+      <table class="table table-hover align-middle">
+        <thead class="table-light">
+          <tr>
+            <th>月份</th>
+            <th>销量（辆）</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for record in sales_records %}
+          <tr>
+            <td>{{ record.month }}</td>
+            <td>{{ record.sales or '0' }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- 页脚 -->
+<footer class="text-center mt-5">
+  <div class="container">
+    <p>© 2025 新能源车智选. 智能推荐，绿色出行</p>
+  </div>
+</footer>
+
+<!-- Chart.js -->
+<script>
+const ctx = document.getElementById('salesChart').getContext('2d');
+const salesChart = new Chart(ctx, {
+  type: 'line',
+  data: {
+    labels: [{% for record in sales_records %}"{{ record.month }}",{% endfor %}],
+    datasets: [{
+      label: '销量',
+      data: [{% for record in sales_records %}{{ record.sales or 0 }},{% endfor %}],
+      fill: true,
+      backgroundColor: 'rgba(58,123,213,0.2)',
+      borderColor: '#3a7bd5',
+      tension: 0.3
+    }]
+  },
+  options: {
+    responsive: true,
+    scales: {
+      y: { beginAtZero: true }
+    }
+  }
+});
+</script>
+
+<!-- 喜欢按钮异步提交 -->
+<script>
+const likeButton = document.getElementById('likeButton');
+if (likeButton) {
+  likeButton.addEventListener('click', async function() {
+    const carName = this.getAttribute('data-car-name');
+    try {
+      const response = await fetch('/like_car', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ car_name: carName })
+      });
+      const data = await response.json();
+      if (response.ok) {
+        this.classList.remove('btn-gradient');
+        this.classList.add('btn-liked');
+        this.innerHTML = '<i class="bi bi-heart-fill me-2"></i>已喜欢';
+        this.disabled = true;
+      } else {
+        alert('操作失败: ' + data.error);
+      }
+    } catch (error) {
+      alert('请求失败');
+    }
+  });
+}
+</script>
+
+<!-- Bootstrap5 JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+</body>
+</html>

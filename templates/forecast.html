@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="zh-cn">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>新能源汽车销量预测</title>
+
+  <!-- Bootstrap5 -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+    :root {
+      --gradient-start: #3a7bd5;
+      --gradient-end: #00d2ff;
+    }
+
+    body {
+      background-color: #f8f9fa;
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+
+    main {
+      flex: 1;
+    }
+
+    .navbar {
+      background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    }
+
+    .btn-gradient {
+      background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+      color: #fff;
+      border: none;
+      transition: all 0.3s ease;
+    }
+
+    .btn-gradient:hover {
+      background: linear-gradient(135deg, var(--gradient-end), var(--gradient-start));
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(58,123,213,0.3);
+    }
+
+    .info-card {
+      background: white;
+      border-radius: 20px;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.08);
+      padding: 2rem;
+    }
+
+    footer {
+      background: #212529;
+      color: #adb5bd;
+      padding: 2rem 0;
+      font-size: 0.9rem;
+    }
+
+    footer a {
+      color: #adb5bd;
+    }
+    footer a:hover {
+      color: #fff;
+    }
+  </style>
+</head>
+
+<body>
+
+<!-- 顶部导航栏 -->
+<!-- 导航栏 -->
+<nav class="navbar navbar-expand-lg navbar-dark sticky-top">
+  <div class="container-fluid px-4">
+    <a class="navbar-brand fw-bold fs-3" href="#">新能源汽车推荐系统</a>
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse justify-content-end" id="navbarNav">
+      <ul class="navbar-nav">
+        <li class="nav-item">
+          <a class="nav-link fs-5" href="/recommend">车型推荐</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link fs-5" href="/ranking">销量排行</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link active fs-5" href="#">销量预测</a>
+        </li>
+      </ul>
+    </div>
+  </div>
+</nav>
+
+<main class="container py-5">
+  <div class="text-center mb-5">
+    <h1 class="display-5 fw-bold text-primary">新能源汽车销量预测</h1>
+    <p class="text-muted fs-5">选择品牌，智能预测未来销量趋势</p>
+  </div>
+
+  <!-- 品牌选择器 -->
+  <div class="info-card mb-5">
+    <form method="GET" action="{{ url_for('forecast') }}" class="row g-3 align-items-center justify-content-center">
+      <div class="col-auto">
+        <select name="brand" class="form-select" required>
+          {% for b in available_brands %}
+            <option value="{{ b }}" {% if selected_brand == b %}selected{% endif %}>{{ b }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-auto">
+        <button type="submit" class="btn btn-gradient px-4 py-2 rounded-pill">预测销量</button>
+      </div>
+    </form>
+  </div>
+
+  {% if months and sales and pred_months and pred_sales %}
+  <!-- 销量预测图 -->
+  <div class="info-card">
+    <h4 class="fw-bold mb-4 text-primary">{{ selected_brand }} 销量趋势预测</h4>
+    <canvas id="forecastChart" style="height: 400px;"></canvas>
+  </div>
+  {% endif %}
+</main>
+
+<!-- 页脚 -->
+<footer class="text-center mt-5">
+  <div class="container">
+    <p>© 2025 新能源车智选. 智能推荐，绿色出行</p>
+  </div>
+</footer>
+
+<!-- Chart.js 渲染 -->
+{% if months and sales and pred_months and pred_sales %}
+<script>
+const ctx = document.getElementById('forecastChart').getContext('2d');
+
+// 合并月份列表
+const allMonths = [{% for m in months %}"{{ m }}",{% endfor %} {% for m in pred_months %}"{{ m }}",{% endfor %}];
+
+// 配置图表
+const salesChart = new Chart(ctx, {
+  type: 'line',
+  data: {
+    labels: allMonths,
+    datasets: [
+      {
+        label: '历史销量',
+        data: [{% for s in sales %}{{ s }},{% endfor %}],
+        fill: false,
+        borderColor: '#3a7bd5',
+        backgroundColor: '#3a7bd5',
+        pointBackgroundColor: '#3a7bd5',
+        tension: 0.4
+      },
+      {
+        label: '预测销量',
+        data: Array({{ sales|length }}).fill(null).concat([{% for p in pred_sales %}{{ p }},{% endfor %}]),
+        fill: false,
+        borderColor: '#ff7f50',
+        backgroundColor: '#ff7f50',
+        borderDash: [6, 6],
+        tension: 0.4
+      }
+    ]
+  },
+  options: {
+    responsive: true,
+    scales: {
+      x: {
+        ticks: {
+          autoSkip: false,      // 不自动跳过标签
+          maxRotation: 45,      // 最大旋转角度
+          minRotation: 45       // 最小旋转角度
+        }
+      },
+      y: {
+        beginAtZero: true
+      }
+    },
+    plugins: {
+      tooltip: {
+        mode: 'index',
+        intersect: false,
+      },
+      legend: {
+        labels: {
+          boxWidth: 20,
+          padding: 15
+        }
+      }
+    }
+  }
+});
+</script>
+{% endif %}
+
+<!-- Bootstrap5 JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+</body>
+</html>

@@ -126,14 +126,29 @@ def recommend():
     preferred_models = current_user.preferred_cars.split(',')
     recommended_models = recommend_for_user(preferred_models)
 
-    recommended_cars = Car.query.filter(Car.name.in_(recommended_models)).all()
+    print(f"[DEBUG] 推荐车型: {recommended_models}")
 
-    # 去除重复车型
-    unique_recommended_cars = {}
+    # 在数据库中寻找名字完全一致的车型，找到一个即可，拼接位list
+    recommended_cars = []
+    for model in recommended_models:
+        car = Car.query.filter_by(name=model).first()
+        if car:
+            recommended_cars.append(car)
+        else:
+            print(f"[DEBUG] 没找到车型: {model}")
+
+    # 去重，名字存在的去掉
+    uni_car={}
     for car in recommended_cars:
-        if car.name not in unique_recommended_cars:
-            unique_recommended_cars[car.name] = car
-    recommended_cars = list(unique_recommended_cars.values())
+        if car.name not in uni_car:
+            uni_car[car.name] = car
+        else:
+            # 从推荐列表中删除
+            recommended_cars.remove(car)
+
+    print(f"[DEBUG] 推荐的车型: {[car.name for car in recommended_cars]}")
+
+    # print(f"[DEBUG] 推荐的车型: {[car.name for car in recommended_cars]}")
 
     return render_template('recommend.html', cars=recommended_cars)
 
@@ -154,14 +169,20 @@ def like_car():
 
     preferred_list = current_user.preferred_cars.split(',') if current_user.preferred_cars else []
 
+    # 删除（如果存在）
+    if car_name in preferred_list:
+        preferred_list.remove(car_name)
+    else:
+        preferred_list.insert(0, car_name)
+
     # 插入到最前面
     if car_name in preferred_list:
         preferred_list.remove(car_name)  # 先删掉旧位置
     preferred_list.insert(0, car_name)
 
     # 保持长度，比如最多5辆
-    if len(preferred_list) > 5:
-        preferred_list = preferred_list[:5]
+    if len(preferred_list) > 10:
+        preferred_list = preferred_list[:10]
 
     current_user.preferred_cars = ','.join(preferred_list)
     db.session.commit()
@@ -332,6 +353,31 @@ def forecast():
                            pred_months=pred_months,
                            pred_sales=pred_sales,
                            formula=formula)
+
+@app.route("/profile")
+@login_required
+def profile():
+    # 用户喜欢的车型名列表
+    preferred_names = current_user.preferred_cars.split(',') if current_user.preferred_cars else []
+    liked_cars = Car.query.filter(Car.name.in_(preferred_names)).group_by(Car.name).all()
+    return render_template('profile.html', user=current_user, cars=liked_cars)
+
+@app.route('/unlike_car', methods=['POST'])
+@login_required
+def unlike_car():
+    car_name = request.json.get('car_name')
+    if not car_name:
+        return jsonify({"error": "No car_name provided"}), 400
+
+    preferred_list = current_user.preferred_cars.split(',') if current_user.preferred_cars else []
+
+    if car_name in preferred_list:
+        preferred_list.remove(car_name)
+        current_user.preferred_cars = ','.join(preferred_list)
+        db.session.commit()
+        return jsonify({"message": "已取消喜欢", "preferred_cars": preferred_list})
+    else:
+        return jsonify({"error": "该车型不在偏好列表中"}), 404
 
 if __name__ == '__main__':
     with app.app_context():

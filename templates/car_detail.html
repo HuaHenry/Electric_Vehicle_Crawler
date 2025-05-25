@@ -109,17 +109,101 @@
 
 <!-- 内容 -->
 <div class="container py-5">
-  <div class="row g-5">
+  <!-- 返回推荐按钮 -->
+  <div class="mb-4">
+    <a href="{{ url_for('recommend') }}" class="btn btn-outline-secondary rounded-pill">
+      <i class="bi bi-arrow-left me-1"></i> 返回推荐页面
+    </a>
+  </div>
+
+  <div class="row g-5 align-items-stretch">
     <div class="col-lg-6">
-      <div class="info-card">
+      <div class="info-card h-100">
         <h4 class="fw-bold mb-4 text-primary">车型信息</h4>
-        <ul class="list-group list-group-flush mb-4">
+        <!-- <ul class="list-group list-group-flush mb-4">
           <li class="list-group-item"><strong>品牌：</strong> {{ car.brand }}</li>
           <li class="list-group-item"><strong>车型：</strong> {{ car.name }}</li>
           <li class="list-group-item"><strong>最低售价：</strong> {{ car.min_price }} 万</li>
           <li class="list-group-item"><strong>最高售价：</strong> {{ car.max_price }} 万</li>
           <li class="list-group-item"><strong>厂商：</strong> {{ car.type or '新能源厂家' }}</li>
-        </ul>
+          <li class="list-group-item"><strong>尺寸：</strong> {{ car.size or '未知' }}</li>
+          <li class="list-group-item"><strong>电池类型：</strong> {{ car.battery_type or '未知' }}</li>
+          <li class="list-group-item"><strong>续航：</strong> {{ car.range_km or '未知' }} km</li>
+          <li class="list-group-item"><strong>智能驾驶等级：</strong> {{ car.autopilot_level or '未知' }}</li>
+        </ul> -->
+        <div class="row row-cols-2 g-3 mb-4">
+          <div class="col">
+            <div class="border rounded p-3 bg-light h-100 shadow-sm">
+              <div class="text-muted small">品牌</div>
+              <div class="fw-bold fs-5 text-primary">{{ car.brand }}</div>
+            </div>
+          </div>
+        
+          <div class="col">
+            <div class="border rounded p-3 bg-light h-100 shadow-sm">
+              <div class="text-muted small">车型</div>
+              <div class="fw-bold fs-5 text-primary">{{ car.name }}</div>
+            </div>
+          </div>
+        
+          <div class="col">
+            <div class="border rounded p-3 bg-light h-100 shadow-sm">
+              <div class="text-muted small">最低售价</div>
+              <div class="fw-bold fs-5 text-success">{{ car.min_price }} 万</div>
+            </div>
+          </div>
+        
+          <div class="col">
+            <div class="border rounded p-3 bg-light h-100 shadow-sm">
+              <div class="text-muted small">最高售价</div>
+              <div class="fw-bold fs-5 text-success">{{ car.max_price }} 万</div>
+            </div>
+          </div>
+        
+          <div class="col">
+            <div class="border rounded p-3 bg-light h-100 shadow-sm">
+              <div class="text-muted small">厂商</div>
+              <div class="fw-bold fs-5">{{ car.type or '新能源厂家' }}</div>
+            </div>
+          </div>
+        
+          <div class="col">
+            <div class="border rounded p-3 bg-light h-100 shadow-sm">
+              <div class="text-muted small">尺寸</div>
+              <div class="fw-bold fs-5">{{ car.size or '未知' }}</div>
+            </div>
+          </div>
+        
+          <div class="col">
+            <div class="border rounded p-3 bg-light h-100 shadow-sm">
+              <div class="text-muted small">电池类型</div>
+              <div class="fw-bold fs-5">{{ car.battery_type or '未知' }}</div>
+            </div>
+          </div>
+        
+          <div class="col">
+            <div class="border rounded p-3 bg-light h-100 shadow-sm">
+              <div class="text-muted small">续航</div>
+              <div class="fw-bold fs-5">{{ car.range_km or '未知' }} km</div>
+            </div>
+          </div>
+        
+          <div class="col-12">
+            {% set level = car.autopilot_level or '未知' %}
+            {% set level_color = {
+              'L2': 'linear-gradient(135deg, #667eea, #764ba2)',
+              'L2+': 'linear-gradient(135deg, #43cea2, #185a9d)',
+              'L3': 'linear-gradient(135deg, #f7971e, #ffd200)',
+              'L4': 'linear-gradient(135deg, #ff416c, #ff4b2b)',
+              '未知': 'linear-gradient(135deg, #bdc3c7, #2c3e50)'
+            } %}
+            <div class="h-100 rounded text-white p-4 shadow-sm"
+                 style="background: {{ level_color.get(level, level_color['未知']) }}; transition: all 0.3s ease;">
+              <div class="small opacity-75">智能驾驶等级</div>
+              <div class="fw-bold fs-3">{{ level }}</div>
+            </div>
+          </div>
+        </div>
 
         <!-- 喜欢按钮 -->
         {% if car.name in (current_user.preferred_cars.split(',') if current_user.preferred_cars else []) %}
@@ -136,9 +220,11 @@
     </div>
 
     <div class="col-lg-6">
-      <div class="info-card">
+      <div class="info-card h-100 d-flex flex-column">
         <h4 class="fw-bold mb-4 text-primary">销量趋势</h4>
-        <canvas id="salesChart" style="height: 300px;"></canvas>
+        <div class="flex-grow-1 position-relative">
+          <canvas id="salesChart" class="w-100 h-100 position-absolute top-0 start-0"></canvas>
+        </div>
       </div>
     </div>
   </div>
@@ -191,6 +277,7 @@ const salesChart = new Chart(ctx, {
   },
   options: {
     responsive: true,
+    maintainAspectRatio: false,  // ✅ 关闭默认宽高比限制
     scales: {
       y: { beginAtZero: true }
     }

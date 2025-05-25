@@ -91,6 +91,14 @@
           <a class="nav-link active fs-5" href="#">销量预测</a>
         </li>
       </ul>
+      <div class="ms-3">
+        <a href="{{ url_for('profile') }}" class="d-inline-block text-decoration-none">
+          <div class="bg-white text-primary fw-bold rounded-circle d-flex align-items-center justify-content-center" 
+               style="width: 40px; height: 40px; font-size: 1.2rem;">
+            {{ current_user.email[0]|upper }}
+          </div>
+        </a>
+      </div>
     </div>
   </div>
 </nav>

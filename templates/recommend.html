@@ -114,6 +114,14 @@
           <a class="nav-link fs-5" href="/forecast">销量预测</a>
         </li>
       </ul>
+      <div class="ms-3">
+        <a href="{{ url_for('profile') }}" class="d-inline-block text-decoration-none">
+          <div class="bg-white text-primary fw-bold rounded-circle d-flex align-items-center justify-content-center" 
+               style="width: 40px; height: 40px; font-size: 1.2rem;">
+            {{ current_user.email[0]|upper }}
+          </div>
+        </a>
+      </div>
     </div>
   </div>
 </nav>
@@ -150,7 +158,7 @@
           <p class="card-text text-dark fs-5 fw-semibold mb-4">
             {{ car.min_price }}万 ~ {{ car.max_price }}万
           </p>
-          <a href="{{ url_for('car_detail', car_id=car.id) }}" target="_blank" class="btn btn-gradient px-4 py-2 rounded-pill fw-medium">查看详情</a>
+          <a href="{{ url_for('car_detail', car_id=car.id) }}" class="btn btn-gradient px-4 py-2 rounded-pill fw-medium">查看详情</a>
         </div>
       </div>
     </div>
